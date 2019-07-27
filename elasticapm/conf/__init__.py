@@ -248,7 +248,10 @@ class Config(_ConfigBase):
             "elasticapm.processors.sanitize_http_request_body",
         ],
     )
-    metrics_sets = _ListConfigValue("METRICS_SETS", default=["elasticapm.metrics.sets.cpu.CPUMetricSet"])
+    metrics_sets = _ListConfigValue(
+        "METRICS_SETS",
+        default=["elasticapm.metrics.sets.cpu.CPUMetricSet", "elasticapm.metrics.sets.gc.GarbageMetrics"],
+    )
     metrics_interval = _ConfigValue(
         "METRICS_INTERVAL",
         type=int,
