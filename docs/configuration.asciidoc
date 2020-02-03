@@ -164,6 +164,26 @@ python -c "import uuid; print(str(uuid.uuid4()))"
 WARNING: secret tokens only provide any security if your APM Server use TLS.
 
 [float]
+[[config-api-key]]
+==== `api_key`
+
+[options="header"]
+|============
+| Environment           | `Config` key | Default | Example
+| `ELASTIC_APM_API_KEY` | `api_key`    | `None`   | A base64-encoded string
+|============
+
+experimental::[]
+
+// TODO: add link to APM Server API Key docs once the docs are released
+
+This base64-encoded string is used to ensure that only your agents can send data to your APM Server.
+You must have created the API key using the APM Server command line tool. Please see the APM Server
+documentation for details on how to do that.
+
+WARNING: API keys only provide any real security if your APM Server uses TLS.
+
+[float]
 [[config-service-version]]
 ==== `service_version`
 [options="header"]

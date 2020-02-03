@@ -3,6 +3,7 @@
 
 * <<instrumenting-custom-code>>
 * <<sanitizing-data>>
+* <<how-the-agent-works>>
 * <<run-tests-locally>>
 
 include::./custom-instrumentation.asciidoc[Custom Instrumentation]

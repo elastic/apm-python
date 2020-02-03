@@ -44,26 +44,22 @@ API_METHOD_KEY_NAME = "__elastic_apm_api_method_name"
 BODY_REF_NAME = "__elastic_apm_body_ref"
 
 
-class ElasticsearchConnectionInstrumentation(AbstractInstrumentedModule):
-    name = "elasticsearch_connection"
-
-    instrument_list = [
-        ("elasticsearch.connection.http_urllib3", "Urllib3HttpConnection.perform_request"),
-        ("elasticsearch.connection.http_requests", "RequestsHttpConnection.perform_request"),
-    ]
-
+class ElasticSearchConnectionMixin(object):
     query_methods = ("Elasticsearch.search", "Elasticsearch.count", "Elasticsearch.delete_by_query")
 
-    def call(self, module, method, wrapped, instance, args, kwargs):
+    def get_signature(self, args, kwargs):
         args_len = len(args)
         http_method = args[0] if args_len else kwargs.get("method")
         http_path = args[1] if args_len > 1 else kwargs.get("url")
+
+        return "ES %s %s" % (http_method, http_path)
+
+    def get_context(self, args, kwargs):
+        args_len = len(args)
         params = args[2] if args_len > 2 else kwargs.get("params")
         body = params.pop(BODY_REF_NAME, None) if params else None
 
         api_method = params.pop(API_METHOD_KEY_NAME, None) if params else None
-
-        signature = "ES %s %s" % (http_method, http_path)
         context = {"db": {"type": "elasticsearch"}}
         if api_method in self.query_methods:
             query = []
@@ -83,6 +79,21 @@ class ElasticsearchConnectionInstrumentation(AbstractInstrumentedModule):
                 # only get the `script` field from the body
                 context["db"]["statement"] = json.dumps({"script": body["script"]})
         # TODO: add instance.base_url to context once we agreed on a format
+        return context
+
+
+class ElasticsearchConnectionInstrumentation(ElasticSearchConnectionMixin, AbstractInstrumentedModule):
+    name = "elasticsearch_connection"
+
+    instrument_list = [
+        ("elasticsearch.connection.http_urllib3", "Urllib3HttpConnection.perform_request"),
+        ("elasticsearch.connection.http_requests", "RequestsHttpConnection.perform_request"),
+    ]
+
+    def call(self, module, method, wrapped, instance, args, kwargs):
+        signature = self.get_signature(args, kwargs)
+        context = self.get_context(args, kwargs)
+
         with elasticapm.capture_span(
             signature,
             span_type="db",

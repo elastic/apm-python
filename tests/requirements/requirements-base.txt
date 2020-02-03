@@ -14,6 +14,11 @@ configparser==4.0.2
 contextlib2==0.6.0
 importlib-metadata==0.23
 packaging==19.2
+Mako==1.1.0
+glob2==0.7
+parse==1.12.1
+parse-type==0.5.2
+pytest-bdd==3.2.1
 
 
 docutils==0.14

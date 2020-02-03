@@ -252,6 +252,7 @@ class Config(_ConfigBase):
     service_name = _ConfigValue("SERVICE_NAME", validators=[RegexValidator("^[a-zA-Z0-9 _-]+$")], required=True)
     environment = _ConfigValue("ENVIRONMENT", default=None)
     secret_token = _ConfigValue("SECRET_TOKEN")
+    api_key = _ConfigValue("API_KEY")
     debug = _BoolConfigValue("DEBUG", default=False)
     server_url = _ConfigValue("SERVER_URL", default="http://localhost:8200", required=True)
     server_cert = _ConfigValue("SERVER_CERT", default=None, required=False, validators=[FileIsReadableValidator()])

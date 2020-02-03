@@ -62,6 +62,7 @@ class Transport(object):
 
     def __init__(
         self,
+        client,
         metadata=None,
         compress_level=5,
         json_serializer=json_encoder.dumps,
@@ -82,6 +83,7 @@ class Transport(object):
         :param max_buffer_size: Maximum size of buffer before flush
         :param kwargs:
         """
+        self.client = client
         self.state = TransportState()
         self._metadata = metadata if metadata is not None else {}
         self._compress_level = min(9, max(0, compress_level if compress_level is not None else 0))

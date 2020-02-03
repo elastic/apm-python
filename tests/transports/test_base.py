@@ -85,7 +85,7 @@ def test_transport_state_set_success():
 
 @mock.patch("elasticapm.transport.base.Transport.send")
 def test_empty_queue_flush_is_not_sent(mock_send):
-    transport = Transport(metadata={"x": "y"}, max_flush_time=5)
+    transport = Transport(client=None, metadata={"x": "y"}, max_flush_time=5)
     try:
         transport.flush()
         assert mock_send.call_count == 0
@@ -95,7 +95,7 @@ def test_empty_queue_flush_is_not_sent(mock_send):
 
 @mock.patch("elasticapm.transport.base.Transport.send")
 def test_metadata_prepended(mock_send):
-    transport = Transport(metadata={"x": "y"}, max_flush_time=5, compress_level=0)
+    transport = Transport(client=None, metadata={"x": "y"}, max_flush_time=5, compress_level=0)
     transport.queue("error", {}, flush=True)
     transport.close()
     assert mock_send.call_count == 1
@@ -111,7 +111,7 @@ def test_metadata_prepended(mock_send):
 @mock.patch("elasticapm.transport.base.Transport.send")
 def test_flush_time(mock_send, caplog):
     with caplog.at_level("DEBUG", "elasticapm.transport"):
-        transport = Transport(metadata={}, max_flush_time=0.1)
+        transport = Transport(client=None, metadata={}, max_flush_time=0.1)
         # let first run finish
         time.sleep(0.2)
         transport.close()
@@ -122,7 +122,7 @@ def test_flush_time(mock_send, caplog):
 
 @mock.patch("elasticapm.transport.base.Transport._flush")
 def test_flush_time_size(mock_flush, caplog):
-    transport = Transport(metadata={}, max_buffer_size=100, queue_chill_count=1)
+    transport = Transport(client=None, metadata={}, max_buffer_size=100, queue_chill_count=1)
     with caplog.at_level("DEBUG", "elasticapm.transport"):
         # we need to add lots of uncompressible data to fill up the gzip-internal buffer
         for i in range(12):
@@ -134,7 +134,7 @@ def test_flush_time_size(mock_flush, caplog):
 
 @mock.patch("elasticapm.transport.base.Transport.send")
 def test_forced_flush(mock_send, caplog):
-    transport = Transport(metadata={}, max_buffer_size=1000, compress_level=0)
+    transport = Transport(client=None, metadata={}, max_buffer_size=1000, compress_level=0)
     with caplog.at_level("DEBUG", "elasticapm.transport"):
         transport.queue("error", "x", flush=True)
     transport.close()
@@ -144,7 +144,7 @@ def test_forced_flush(mock_send, caplog):
 
 @mock.patch("elasticapm.transport.base.Transport.send")
 def test_sync_transport_fail_and_recover(mock_send, caplog):
-    transport = Transport()
+    transport = Transport(client=None)
     try:
         mock_send.side_effect = TransportException("meh")
         transport.queue("x", {})
@@ -192,6 +192,6 @@ def test_client_doesnt_start_processor_thread_in_master_process(is_master_proces
 
 
 def test_compress_level_sanitization():
-    assert DummyTransport(compress_level=None, url="")._compress_level == 0
-    assert DummyTransport(compress_level=-1, url="")._compress_level == 0
-    assert DummyTransport(compress_level=10, url="")._compress_level == 9
+    assert DummyTransport(compress_level=None, url="", client=None)._compress_level == 0
+    assert DummyTransport(compress_level=-1, url="", client=None)._compress_level == 0
+    assert DummyTransport(compress_level=10, url="", client=None)._compress_level == 9

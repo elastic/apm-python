@@ -47,8 +47,8 @@ logger = get_logger("elasticapm.transport.http")
 
 
 class Transport(HTTPTransportBase):
-    def __init__(self, url, **kwargs):
-        super(Transport, self).__init__(url, **kwargs)
+    def __init__(self, url, *args, **kwargs):
+        super(Transport, self).__init__(url, *args, **kwargs)
         url_parts = compat.urlparse.urlparse(url)
         pool_kwargs = {"cert_reqs": "CERT_REQUIRED", "ca_certs": certifi.where(), "block": True}
         if self._server_cert and url_parts.scheme != "http":
@@ -69,6 +69,9 @@ class Transport(HTTPTransportBase):
     def send(self, data):
         response = None
 
+        headers = self._headers.copy() if self._headers else {}
+        headers.update(self.auth_headers)
+
         if compat.PY2 and isinstance(self._url, compat.text_type):
             url = self._url.encode("utf-8")
         else:
@@ -76,7 +79,7 @@ class Transport(HTTPTransportBase):
         try:
             try:
                 response = self.http.urlopen(
-                    "POST", url, body=data, headers=self._headers, timeout=self._timeout, preload_content=False
+                    "POST", url, body=data, headers=headers, timeout=self._timeout, preload_content=False
                 )
                 logger.debug("Sent request, url=%s size=%.2fkb status=%s", url, len(data) / 1024.0, response.status)
             except Exception as e:
@@ -123,6 +126,7 @@ class Transport(HTTPTransportBase):
         url = self._config_url
         data = json_encoder.dumps(keys).encode("utf-8")
         headers = self._headers.copy()
+        headers.update(self.auth_headers)
         max_age = 300
         if current_version:
             headers["If-None-Match"] = current_version
@@ -161,6 +165,11 @@ class Transport(HTTPTransportBase):
             digest.update(cert_data)
             return digest.hexdigest()
         return None
+
+    @property
+    def auth_headers(self):
+        headers = super(Transport, self).auth_headers
+        return {k.encode("ascii"): v.encode("ascii") for k, v in compat.iteritems(headers)}
 
 
 class AsyncTransport(AsyncHTTPTransportBase, Transport):

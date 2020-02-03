@@ -21,3 +21,6 @@ indent_size = 2
 
 [*.groovy]
 indent_size = 2
+
+[*.feature]
+indent_size = 2

@@ -47,9 +47,9 @@ except ImportError:
     from urllib import parse as urlparse
 
 
-def test_send(waiting_httpserver):
+def test_send(waiting_httpserver, elasticapm_client):
     waiting_httpserver.serve_content(code=202, content="", headers={"Location": "http://example.com/foo"})
-    transport = Transport(waiting_httpserver.url)
+    transport = Transport(waiting_httpserver.url, client=elasticapm_client)
     try:
         url = transport.send(compat.b("x"))
         assert url == "http://example.com/foo"
@@ -58,8 +58,8 @@ def test_send(waiting_httpserver):
 
 
 @mock.patch("urllib3.poolmanager.PoolManager.urlopen")
-def test_timeout(mock_urlopen):
-    transport = Transport("http://localhost", timeout=5)
+def test_timeout(mock_urlopen, elasticapm_client):
+    transport = Transport("http://localhost", timeout=5, client=elasticapm_client)
     mock_urlopen.side_effect = MaxRetryError(None, None, reason=TimeoutError())
     try:
         with pytest.raises(TransportException) as exc_info:
@@ -69,9 +69,9 @@ def test_timeout(mock_urlopen):
         transport.close()
 
 
-def test_http_error(waiting_httpserver):
+def test_http_error(waiting_httpserver, elasticapm_client):
     waiting_httpserver.serve_content(code=418, content="I'm a teapot")
-    transport = Transport(waiting_httpserver.url)
+    transport = Transport(waiting_httpserver.url, client=elasticapm_client)
     try:
         with pytest.raises(TransportException) as exc_info:
             transport.send("x")
@@ -82,9 +82,9 @@ def test_http_error(waiting_httpserver):
 
 
 @mock.patch("urllib3.poolmanager.PoolManager.urlopen")
-def test_generic_error(mock_urlopen):
+def test_generic_error(mock_urlopen, elasticapm_client):
     url, status, message, body = ("http://localhost:9999", 418, "I'm a teapot", "Nothing")
-    transport = Transport(url)
+    transport = Transport(url, client=elasticapm_client)
     mock_urlopen.side_effect = Exception("Oopsie")
     try:
         with pytest.raises(TransportException) as exc_info:
@@ -96,7 +96,7 @@ def test_generic_error(mock_urlopen):
 
 def test_http_proxy_environment_variable():
     with mock.patch.dict("os.environ", {"HTTP_PROXY": "http://example.com"}):
-        transport = Transport("http://localhost:9999")
+        transport = Transport("http://localhost:9999", client=None)
         try:
             assert isinstance(transport.http, urllib3.ProxyManager)
         finally:
@@ -105,7 +105,7 @@ def test_http_proxy_environment_variable():
 
 def test_https_proxy_environment_variable():
     with mock.patch.dict("os.environ", {"HTTPS_PROXY": "https://example.com"}):
-        transport = Transport("http://localhost:9999")
+        transport = Transport("http://localhost:9999", client=None)
         try:
             assert isinstance(transport.http, urllib3.poolmanager.ProxyManager)
         finally:
@@ -114,7 +114,7 @@ def test_https_proxy_environment_variable():
 
 def test_https_proxy_environment_variable_is_preferred():
     with mock.patch.dict("os.environ", {"https_proxy": "https://example.com", "HTTP_PROXY": "http://example.com"}):
-        transport = Transport("http://localhost:9999")
+        transport = Transport("http://localhost:9999", client=None)
         try:
             assert isinstance(transport.http, urllib3.poolmanager.ProxyManager)
             assert transport.http.proxy.scheme == "https"
@@ -124,7 +124,7 @@ def test_https_proxy_environment_variable_is_preferred():
 
 def test_no_proxy_star():
     with mock.patch.dict("os.environ", {"HTTPS_PROXY": "https://example.com", "NO_PROXY": "*"}):
-        transport = Transport("http://localhost:9999")
+        transport = Transport("http://localhost:9999", client=None)
         try:
             assert not isinstance(transport.http, urllib3.poolmanager.ProxyManager)
         finally:
@@ -133,21 +133,21 @@ def test_no_proxy_star():
 
 def test_no_proxy_host():
     with mock.patch.dict("os.environ", {"HTTPS_PROXY": "https://example.com", "NO_PROXY": "localhost"}):
-        transport = Transport("http://localhost:9999")
+        transport = Transport("http://localhost:9999", client=None)
         try:
             assert not isinstance(transport.http, urllib3.poolmanager.ProxyManager)
         finally:
             transport.close()
 
 
-def test_header_encodings():
+def test_header_encodings(elasticapm_client):
     """
     Tests that headers are encoded as bytestrings. If they aren't,
     urllib assumes it needs to encode the data as well, which is already a zlib
     encoded bytestring, and explodes.
     """
     headers = {compat.text_type("X"): compat.text_type("V")}
-    transport = Transport("http://localhost:9999", headers=headers)
+    transport = Transport("http://localhost:9999", headers=headers, client=elasticapm_client)
     try:
         with mock.patch("elasticapm.transport.http.urllib3.PoolManager.urlopen") as mock_urlopen:
             mock_urlopen.return_value = mock.Mock(status=202)
@@ -162,9 +162,9 @@ def test_header_encodings():
         transport.close()
 
 
-def test_ssl_verify_fails(waiting_httpsserver):
+def test_ssl_verify_fails(waiting_httpsserver, elasticapm_client):
     waiting_httpsserver.serve_content(code=202, content="", headers={"Location": "http://example.com/foo"})
-    transport = Transport(waiting_httpsserver.url)
+    transport = Transport(waiting_httpsserver.url, client=elasticapm_client)
     try:
         with pytest.raises(TransportException) as exc_info:
             url = transport.send(compat.b("x"))
@@ -174,9 +174,9 @@ def test_ssl_verify_fails(waiting_httpsserver):
 
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS")
-def test_ssl_verify_disable(waiting_httpsserver):
+def test_ssl_verify_disable(waiting_httpsserver, elasticapm_client):
     waiting_httpsserver.serve_content(code=202, content="", headers={"Location": "https://example.com/foo"})
-    transport = Transport(waiting_httpsserver.url, verify_server_cert=False)
+    transport = Transport(waiting_httpsserver.url, verify_server_cert=False, client=elasticapm_client)
     try:
         url = transport.send(compat.b("x"))
         assert url == "https://example.com/foo"
@@ -184,13 +184,13 @@ def test_ssl_verify_disable(waiting_httpsserver):
         transport.close()
 
 
-def test_ssl_verify_disable_http(waiting_httpserver):
+def test_ssl_verify_disable_http(waiting_httpserver, elasticapm_client):
     """
     Make sure that ``assert_hostname`` isn't passed in for http requests, even
     with verify_server_cert=False
     """
     waiting_httpserver.serve_content(code=202, content="", headers={"Location": "http://example.com/foo"})
-    transport = Transport(waiting_httpserver.url, verify_server_cert=False)
+    transport = Transport(waiting_httpserver.url, verify_server_cert=False, client=elasticapm_client)
     try:
         url = transport.send(compat.b("x"))
         assert url == "http://example.com/foo"
@@ -198,7 +198,7 @@ def test_ssl_verify_disable_http(waiting_httpserver):
         transport.close()
 
 
-def test_ssl_cert_pinning_http(waiting_httpserver):
+def test_ssl_cert_pinning_http(waiting_httpserver, elasticapm_client):
     """
     Won't fail, as with the other cert pinning test, since certs aren't relevant
     for http, only https.
@@ -208,6 +208,7 @@ def test_ssl_cert_pinning_http(waiting_httpserver):
         waiting_httpserver.url,
         server_cert=os.path.join(os.path.dirname(__file__), "wrong_cert.pem"),
         verify_server_cert=True,
+        client=elasticapm_client,
     )
     try:
         url = transport.send(compat.b("x"))
@@ -216,11 +217,14 @@ def test_ssl_cert_pinning_http(waiting_httpserver):
         transport.close()
 
 
-def test_ssl_cert_pinning(waiting_httpsserver):
+def test_ssl_cert_pinning(waiting_httpsserver, elasticapm_client):
     waiting_httpsserver.serve_content(code=202, content="", headers={"Location": "https://example.com/foo"})
     cur_dir = os.path.dirname(os.path.realpath(__file__))
     transport = Transport(
-        waiting_httpsserver.url, server_cert=os.path.join(cur_dir, "..", "ca/server.pem"), verify_server_cert=True
+        waiting_httpsserver.url,
+        server_cert=os.path.join(cur_dir, "..", "ca/server.pem"),
+        verify_server_cert=True,
+        client=elasticapm_client,
     )
     try:
         url = transport.send(compat.b("x"))
@@ -229,7 +233,7 @@ def test_ssl_cert_pinning(waiting_httpsserver):
         transport.close()
 
 
-def test_ssl_cert_pinning_fails(waiting_httpsserver):
+def test_ssl_cert_pinning_fails(waiting_httpsserver, elasticapm_client):
     if compat.PY3:
         waiting_httpsserver.serve_content(code=202, content="", headers={"Location": "https://example.com/foo"})
         url = waiting_httpsserver.url
@@ -242,7 +246,10 @@ def test_ssl_cert_pinning_fails(waiting_httpsserver):
         # May the Testing Goat have mercy on our souls.
         url = "https://example.com"
     transport = Transport(
-        url, server_cert=os.path.join(os.path.dirname(__file__), "wrong_cert.pem"), verify_server_cert=True
+        url,
+        server_cert=os.path.join(os.path.dirname(__file__), "wrong_cert.pem"),
+        verify_server_cert=True,
+        client=elasticapm_client,
     )
     try:
         with pytest.raises(TransportException) as exc_info:
@@ -254,19 +261,19 @@ def test_ssl_cert_pinning_fails(waiting_httpsserver):
 
 
 def test_config_url():
-    transport = Transport("http://example.com/" + constants.EVENTS_API_PATH)
+    transport = Transport("http://example.com/" + constants.EVENTS_API_PATH, client=None)
     try:
         assert transport._config_url == "http://example.com/" + constants.AGENT_CONFIG_PATH
     finally:
         transport.close()
 
 
-def test_get_config(waiting_httpserver):
+def test_get_config(waiting_httpserver, elasticapm_client):
     waiting_httpserver.serve_content(
         code=200, content=b'{"x": "y"}', headers={"Cache-Control": "max-age=5", "Etag": "2"}
     )
     url = waiting_httpserver.url
-    transport = Transport(url + "/" + constants.EVENTS_API_PATH)
+    transport = Transport(url + "/" + constants.EVENTS_API_PATH, client=elasticapm_client)
     try:
         version, data, max_age = transport.get_config("1", {})
         assert version == "2"
@@ -277,8 +284,8 @@ def test_get_config(waiting_httpserver):
 
 
 @mock.patch("urllib3.poolmanager.PoolManager.urlopen")
-def test_get_config_handle_exception(mock_urlopen, caplog):
-    transport = Transport("http://example.com/" + constants.EVENTS_API_PATH)
+def test_get_config_handle_exception(mock_urlopen, caplog, elasticapm_client):
+    transport = Transport("http://example.com/" + constants.EVENTS_API_PATH, client=elasticapm_client)
     mock_urlopen.side_effect = urllib3.exceptions.RequestError(transport.http, "http://example.com/", "boom")
     try:
         with caplog.at_level("DEBUG", "elasticapm.transport.http"):
@@ -291,10 +298,10 @@ def test_get_config_handle_exception(mock_urlopen, caplog):
         transport.close()
 
 
-def test_get_config_cache_headers_304(waiting_httpserver, caplog):
+def test_get_config_cache_headers_304(waiting_httpserver, caplog, elasticapm_client):
     waiting_httpserver.serve_content(code=304, content=b"", headers={"Cache-Control": "max-age=5"})
     url = waiting_httpserver.url
-    transport = Transport(url + "/" + constants.EVENTS_API_PATH)
+    transport = Transport(url + "/" + constants.EVENTS_API_PATH, client=elasticapm_client)
     try:
         with caplog.at_level("DEBUG", "elasticapm.transport.http"):
             version, data, max_age = transport.get_config("1", {})
@@ -308,12 +315,12 @@ def test_get_config_cache_headers_304(waiting_httpserver, caplog):
         transport.close()
 
 
-def test_get_config_bad_cache_control_header(waiting_httpserver, caplog):
+def test_get_config_bad_cache_control_header(waiting_httpserver, caplog, elasticapm_client):
     waiting_httpserver.serve_content(
         code=200, content=b'{"x": "y"}', headers={"Cache-Control": "max-age=fifty", "Etag": "2"}
     )
     url = waiting_httpserver.url
-    transport = Transport(url + "/" + constants.EVENTS_API_PATH)
+    transport = Transport(url + "/" + constants.EVENTS_API_PATH, client=elasticapm_client)
     try:
         with caplog.at_level("DEBUG", "elasticapm.transport.http"):
             version, data, max_age = transport.get_config("1", {})
@@ -326,10 +333,10 @@ def test_get_config_bad_cache_control_header(waiting_httpserver, caplog):
         transport.close()
 
 
-def test_get_config_empty_response(waiting_httpserver, caplog):
+def test_get_config_empty_response(waiting_httpserver, caplog, elasticapm_client):
     waiting_httpserver.serve_content(code=200, content=b"", headers={"Cache-Control": "max-age=5"})
     url = waiting_httpserver.url
-    transport = Transport(url + "/" + constants.EVENTS_API_PATH)
+    transport = Transport(url + "/" + constants.EVENTS_API_PATH, client=elasticapm_client)
     try:
         with caplog.at_level("DEBUG", "elasticapm.transport.http"):
             version, data, max_age = transport.get_config("1", {})
