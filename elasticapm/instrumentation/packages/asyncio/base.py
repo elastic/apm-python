@@ -29,8 +29,33 @@
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from elasticapm.instrumentation.packages.base import AbstractInstrumentedModule
+from elasticapm.traces import execution_context
+from elasticapm.utils.wrapt import function_wrapper
 
 
 class AsyncAbstractInstrumentedModule(AbstractInstrumentedModule):
     async def call(self, module, method, wrapped, instance, args, kwargs):
         raise NotImplementedError()
+
+
+class RunInExecutorInstrumentation(AsyncAbstractInstrumentedModule):
+    name = "executor"
+    instrument_list = [("asyncio.base_events", "BaseEventLoop.run_in_executor")]
+
+    async def call(self, module, method, wrapped, instance, args, kwargs):
+        func = args[1]
+        transaction = execution_context.get_transaction()
+        span = execution_context.get_span()
+
+        @function_wrapper
+        def wrapper(wrapped, instance, args, kwargs):
+            execution_context.set_transaction(transaction)
+            execution_context.set_span(span)
+            try:
+                return wrapped(*args, **kwargs)
+            finally:
+                execution_context.get_transaction(clear=True)
+
+        func = wrapper(func)
+        args = (args[0], func) + args[2:]
+        return wrapped(*args, **kwargs)

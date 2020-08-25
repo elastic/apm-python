@@ -29,6 +29,7 @@
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from asyncio import tasks
+from concurrent import futures
 
 import pytest
 
@@ -64,3 +65,18 @@ async def test_async_capture_span(instrument, elasticapm_client):
     assert d["subtype"] == "custom"
     assert not d["sync"]
     assert d["transaction_id"] == transaction["id"]
+
+
+async def test_threadpool_executor(instrument, event_loop, elasticapm_client):
+    executor = futures.ThreadPoolExecutor(max_workers=2)
+    elasticapm_client.begin_transaction("foo")
+
+    def myfunc(a, b):
+        with elasticapm.capture_span("nothing"):
+            pass
+
+    await event_loop.run_in_executor(executor, myfunc, 1, 2)
+    elasticapm_client.end_transaction("bar", "OK")
+    transaction = elasticapm_client.events[constants.TRANSACTION][0]
+    spans = elasticapm_client.spans_for_transaction(transaction)
+    assert len(spans) == 1
