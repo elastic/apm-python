@@ -49,6 +49,8 @@ from elasticapm.utils.logging import get_logger
 
 logger = get_logger("elasticapm.errors.client")
 
+_client = None
+
 
 def make_client(client_cls, app, **defaults):
     config = app.config.get("ELASTIC_APM", {})
@@ -58,7 +60,14 @@ def make_client(client_cls, app, **defaults):
         defaults["framework_version"] = getattr(flask, "__version__", "<0.7")
 
     client = client_cls(config, **defaults)
+    global _client
+    _client = client
     return client
+
+
+def get_client():
+    global _client
+    return _client
 
 
 class ElasticAPM(object):
@@ -148,7 +157,6 @@ class ElasticAPM(object):
         # Instrument to get spans
         if self.client.config.instrument and self.client.config.enabled:
             elasticapm.instrumentation.control.instrument()
-
             signals.request_started.connect(self.request_started, sender=app)
             signals.request_finished.connect(self.request_finished, sender=app)
             try:
