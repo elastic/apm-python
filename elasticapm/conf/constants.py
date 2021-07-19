@@ -58,6 +58,7 @@ def _starmatch_to_regex(pattern):
 
 
 EVENTS_API_PATH = "intake/v2/events"
+PROFILE_API_PATH = "intake/v2/profile"
 AGENT_CONFIG_PATH = "config/v1/agents"
 
 TRACE_CONTEXT_VERSION = 0

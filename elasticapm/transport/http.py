@@ -50,6 +50,8 @@ except ImportError:
 
 logger = get_logger("elasticapm.transport.http")
 
+MULTIPART_BOUNDARY = "nnnggg"
+
 
 class Transport(HTTPTransportBase):
     def __init__(self, url, *args, **kwargs):
@@ -107,11 +109,38 @@ class Transport(HTTPTransportBase):
                     message = "HTTP %s: " % response.status
                     print_trace = True
                 message += body.decode("utf8", errors="replace")
-                raise TransportException(message, data, print_trace=print_trace)
+                raise TransportException(message[:10000], data, print_trace=print_trace)
             return response.getheader("Location")
         finally:
             if response:
                 response.close()
+
+    def send_profile(self, profile_data):
+        headers = self._headers.copy() if self._headers else {}
+        headers.update(self.auth_headers)
+
+        headers["Content-Type"] = "multipart/form-data; boundary={}".format(MULTIPART_BOUNDARY)
+        try:
+            response = self.http.request(
+                "POST",
+                self._profile_url,
+                headers=headers,
+                multipart_boundary=MULTIPART_BOUNDARY,
+                fields={
+                    "metadata": ("metadata.json", self._json_serializer(self._metadata), "application/json"),
+                    "profile": (
+                        "profile.data",
+                        profile_data,
+                        "application/x-protobuf; messagetype=perftools.profiles.Profile",
+                    ),
+                },
+            )
+        except (urllib3.exceptions.RequestError, urllib3.exceptions.HTTPError):
+            logger.warning("error while sending profile")
+            return
+        body = response.read()
+        if response.status >= 400:
+            logger.warning("http error while sending profile: %s", body.decode("utf-8"))
 
     def get_config(self, current_version=None, keys=None):
         """

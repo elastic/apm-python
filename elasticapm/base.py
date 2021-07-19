@@ -46,6 +46,7 @@ import elasticapm
 from elasticapm.conf import Config, VersionedConfig, constants
 from elasticapm.conf.constants import ERROR
 from elasticapm.metrics.base_metrics import MetricsRegistry
+from elasticapm.profiler import Profiler
 from elasticapm.traces import Tracer, execution_context
 from elasticapm.utils import cgroup, cloud, compat, is_master_process, stacks, varmap
 from elasticapm.utils.encoding import enforce_label_format, keyword_field, shorten, transform
@@ -206,6 +207,8 @@ class Client(object):
         if self.config.use_elastic_excepthook:
             self.original_excepthook = sys.excepthook
             sys.excepthook = self._excepthook
+        if self.config.profiler:
+            self._thread_managers["profiler"] = Profiler(self)
         if config.enabled:
             self.start_threads()
 
