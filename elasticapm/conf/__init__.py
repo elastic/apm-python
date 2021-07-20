@@ -594,6 +594,11 @@ class Config(_ConfigBase):
     )
     async_mode = _BoolConfigValue("ASYNC_MODE", default=True)
     instrument_django_middleware = _BoolConfigValue("INSTRUMENT_DJANGO_MIDDLEWARE", default=True)
+    django_commands_exclude = _ListConfigValue(
+        "DJANGO_COMMANDS_EXCLUDE",
+        type=starmatch_to_regex,
+        default=list(map(starmatch_to_regex, ["runserver*", "migrate", "createsuperuser", "*shell*", "testserver"])),
+    )
     autoinsert_django_middleware = _BoolConfigValue("AUTOINSERT_DJANGO_MIDDLEWARE", default=True)
     transactions_ignore_patterns = _ListConfigValue("TRANSACTIONS_IGNORE_PATTERNS", default=[])
     transaction_ignore_urls = _ListConfigValue("TRANSACTION_IGNORE_URLS", type=starmatch_to_regex, default=[])

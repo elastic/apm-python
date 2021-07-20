@@ -60,6 +60,7 @@ _cls_register = {
     "elasticapm.instrumentation.packages.pyodbc.PyODBCInstrumentation",
     "elasticapm.instrumentation.packages.django.template.DjangoTemplateInstrumentation",
     "elasticapm.instrumentation.packages.django.template.DjangoTemplateSourceInstrumentation",
+    "elasticapm.instrumentation.packages.django.commands.DjangoCommandInstrumentation",
     "elasticapm.instrumentation.packages.urllib.UrllibInstrumentation",
     "elasticapm.instrumentation.packages.graphql.GraphQLExecutorInstrumentation",
     "elasticapm.instrumentation.packages.graphql.GraphQLBackendInstrumentation",

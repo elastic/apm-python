@@ -1122,6 +1122,17 @@ To trace Django requests, the agent uses a middleware, `elasticapm.contrib.djang
 By default, this middleware is inserted automatically as the first item in `settings.MIDDLEWARES`.
 To disable the automatic insertion of the middleware, change this setting to `False`.
 
+[float]
+[[config-django-commands-exclude]]
+==== `django_commands_exclude`
+|============
+| Environment                            | Django                    | Default
+| `ELASTIC_APM_DJANGO_COMMANDS_EXCLUDE`  | `DJANGO_COMMANDS_EXCLUDE` | `runserver*,migrate,createsuperuser,\*shell*,testserver`
+|============
+
+By default, Elastic APM instruments Django management commands.
+You can supply a list of commands that should not be instrumented.
+To disable instrumenting of management commands, set it to `*`.
 
 [float]
 [[config-generic-environment]]
