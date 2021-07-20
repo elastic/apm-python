@@ -32,6 +32,7 @@ from opentracing.span import Span as OTSpanBase
 from opentracing.span import SpanContext as OTSpanContextBase
 
 from elasticapm import traces
+from elasticapm.traces import DroppedSpan
 from elasticapm.utils import compat, get_url_dict
 from elasticapm.utils.logging import get_logger
 
@@ -124,10 +125,14 @@ class OTSpan(OTSpanBase):
         return self
 
     def finish(self, finish_time=None):
+        if finish_time is not None and not isinstance(self.elastic_apm_ref, DroppedSpan):
+            duration = finish_time - self.elastic_apm_ref.timestamp
+        else:
+            duration = None
         if self.is_transaction:
-            self.tracer._agent.end_transaction()
+            self.tracer._agent.end_transaction(duration=duration)
         elif not self.is_dropped:
-            self.elastic_apm_ref.transaction.end_span()
+            self.elastic_apm_ref.transaction.end_span(duration=duration)
 
 
 class OTSpanContext(OTSpanContextBase):

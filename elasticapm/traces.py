@@ -127,12 +127,22 @@ class BaseSpan(object):
 
 class Transaction(BaseSpan):
     def __init__(
-        self, tracer, transaction_type="custom", trace_parent=None, is_sampled=True, start=None, sample_rate=None
+        self,
+        tracer,
+        transaction_type="custom",
+        trace_parent=None,
+        is_sampled=True,
+        start=None,
+        sample_rate=None,
+        start_timestamp=None,
     ):
         self.id = self.get_dist_tracing_id()
         self.trace_parent = trace_parent
         if start:
-            self.timestamp = self.start_time = start
+            if start_timestamp is None:
+                start_timestamp = start
+            self.timestamp = start_timestamp
+            self.start_time = start
         else:
             self.timestamp, self.start_time = time.time(), _time_func()
         self.name = None
@@ -566,14 +576,16 @@ class Tracer(object):
         else:
             return self.config.span_frames_min_duration / 1000.0
 
-    def begin_transaction(self, transaction_type, trace_parent=None, start=None):
+    def begin_transaction(self, transaction_type, trace_parent=None, start=None, start_timestamp=None):
         """
         Start a new transactions and bind it in a thread-local variable
 
         :param transaction_type: type of the transaction, e.g. "request"
         :param trace_parent: an optional TraceParent object
         :param start: override the start timestamp, mostly useful for testing
-
+        :param start_timestamp: if 'start' is a timestamp from monotonic clock
+                                'start_timestamp' could be optionally provided
+                                with timestamp from system clock.
         :returns the Transaction object
         """
         if trace_parent:
@@ -595,6 +607,7 @@ class Tracer(object):
             is_sampled=is_sampled,
             start=start,
             sample_rate=sample_rate,
+            start_timestamp=start_timestamp,
         )
         if trace_parent is None:
             transaction.trace_parent = TraceParent(
