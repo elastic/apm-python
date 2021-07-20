@@ -43,6 +43,7 @@ from elasticapm.metrics.base_metrics import Timer
 from elasticapm.utils import compat, encoding, get_name_from_func
 from elasticapm.utils.disttracing import TraceParent, TracingOptions
 from elasticapm.utils.logging import get_logger
+from elasticapm.utils.time import time_to_perf_counter
 
 __all__ = ("capture_span", "label", "set_transaction_name", "set_custom_context", "set_user_context")
 
@@ -129,10 +130,28 @@ class Transaction(BaseSpan):
     def __init__(
         self, tracer, transaction_type="custom", trace_parent=None, is_sampled=True, start=None, sample_rate=None
     ):
+        """
+        tracer
+            Tracer object
+        transaction_type
+            Transaction type
+        trace_parent
+            TraceParent object representing the parent trace and trace state
+        is_sampled
+            Whether or not this transaction is sampled
+        start
+            Optional start timestamp. This is expected to be an epoch timestamp
+            in seconds (such as from `time.time()`). If it is not, it's recommended
+            that a `duration` is passed into the `end()` method.
+        sample_rate
+            Sample rate which was used to decide whether to sample this transaction.
+            This is reported to the APM server so that unsampled transactions can
+            be extrapolated.
+        """
         self.id = self.get_dist_tracing_id()
         self.trace_parent = trace_parent
         if start:
-            self.timestamp = self.start_time = start
+            self.timestamp, self.start_time = start, time_to_perf_counter(start)
         else:
             self.timestamp, self.start_time = time.time(), _time_func()
         self.name = None
