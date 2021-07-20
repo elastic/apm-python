@@ -34,6 +34,7 @@ from elasticapm.conf import setup_logging  # noqa: F401
 from elasticapm.instrumentation.control import instrument, uninstrument  # noqa: F401
 from elasticapm.traces import (  # noqa: F401
     capture_span,
+    transaction,
     get_span_id,
     get_trace_id,
     get_trace_parent_header,

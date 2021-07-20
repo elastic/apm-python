@@ -705,7 +705,7 @@ class capture_span(object):
 
         if transaction and transaction.is_sampled:
             try:
-                outcome = "failure" if exc_val else "success"
+                outcome = constants.OUTCOME.FAILURE if exc_val else constants.OUTCOME.SUCCESS
                 span = transaction.end_span(self.skip_frames, duration=self.duration, outcome=outcome)
                 if exc_val and not isinstance(span, DroppedSpan):
                     try:
@@ -715,6 +715,43 @@ class capture_span(object):
                         pass
             except LookupError:
                 logger.debug("ended non-existing span %s of type %s", self.name, self.type)
+
+
+class transaction(object):
+    def __init__(self, name=None, transaction_type=None, trace_parent=None):
+        self.name = name
+        self.transaction_type = transaction_type or "code"
+        self.trace_parent = trace_parent
+
+    def __call__(self, func):
+        self.name = self.name or get_name_from_func(func)
+
+        @functools.wraps(func)
+        def decorated(*args, **kwds):
+            with self:
+                return func(*args, **kwds)
+
+        return decorated
+
+    def __enter__(self):
+        from elasticapm.base import get_client
+
+        client = get_client()
+        if client is None:
+            logger.debug("No active client instance found while tracing transaction %s", str(self.name))
+            return None
+        return client.begin_transaction(self.transaction_type, self.trace_parent)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        from elasticapm.base import get_client
+
+        client = get_client()
+        if client is None:
+            logger.debug("No active client instance found while tracing transaction %s", str(self.name))
+            return None
+        outcome = constants.OUTCOME.FAILURE if exc_val else constants.OUTCOME.SUCCESS
+        set_transaction_outcome(outcome)
+        client.end_transaction(self.name)
 
 
 def label(**labels):

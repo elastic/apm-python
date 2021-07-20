@@ -48,6 +48,7 @@ from pytest_localserver.https import DEFAULT_CERTIFICATE
 import elasticapm
 from elasticapm.base import Client
 from elasticapm.conf.constants import ERROR, KEYWORD_MAX_LENGTH, SPAN, TRANSACTION
+from elasticapm.traces import transaction
 from elasticapm.utils import compat, encoding
 from elasticapm.utils.disttracing import TraceParent
 from tests.fixtures import DummyTransport, TempStoreClient
@@ -894,3 +895,35 @@ def test_excepthook(elasticapm_client):
         elasticapm_client._excepthook(type_, value, traceback)
 
     assert elasticapm_client.events[ERROR]
+
+
+def test_transaction_as_decorator(elasticapm_client):
+    @elasticapm.transaction()
+    def decorated_function():
+        with elasticapm.capture_span("bla"):
+            pass
+
+    decorated_function()
+    transaction = elasticapm_client.events["transaction"][0]
+    assert transaction["name"] == "tests.client.client_tests.decorated_function"
+    assert transaction["type"] == "code"
+    assert transaction["outcome"] == "success"
+    assert transaction["span_count"]["started"] == 1
+
+
+def test_transaction_as_context_manager(elasticapm_client):
+    with elasticapm.transaction(name="foo"):
+        with elasticapm.capture_span("bla"):
+            pass
+    transaction = elasticapm_client.events["transaction"][0]
+    assert transaction["name"] == "foo"
+    assert transaction["type"] == "code"
+    assert transaction["outcome"] == "success"
+    assert transaction["span_count"]["started"] == 1
+
+
+def test_transaction_context_manager_with_no_client():
+    with elasticapm.transaction(name="foo") as t:
+        with elasticapm.capture_span("bla"):
+            pass
+    assert t is None
