@@ -9,6 +9,7 @@ The Elastic APM Python Agent comes with support for the following frameworks:
  * <<supported-aiohttp,Aiohttp Server>>
  * <<supported-tornado,Tornado>>
  * <<supported-starlette,Starlette/FastAPI>>
+ * <<supported-sanic,Sanic>>
 
 For other frameworks and custom Python code, the agent exposes a set of <<api,APIs>> for integration.
 
@@ -68,6 +69,15 @@ We support these aiohttp versions:
 We support these tornado versions:
 
  * 6.0+
+
+
+[float]
+[[supported-sanic]]
+=== Sanic
+
+We support these sanic versions:
+
+ * 20.12.2+
 
 
 [float]

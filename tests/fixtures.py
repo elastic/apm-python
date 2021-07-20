@@ -346,6 +346,11 @@ class TempStoreClient(Client):
 
 
 @pytest.fixture()
+def temp_store_client():
+    return TempStoreClient
+
+
+@pytest.fixture()
 def not_so_random():
     old_state = random.getstate()
     random.seed(42)

@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-
 #  BSD 3-Clause License
 #
+#  Copyright (c) 2012, the Sentry Team, see AUTHORS for more details
 #  Copyright (c) 2019, Elasticsearch BV
 #  All rights reserved.
 #
@@ -28,50 +27,35 @@
 #  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 #  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 #  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-#  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import importlib
-import os
-import sys
-from os.path import abspath, dirname
+import typing as t
 
-try:
-    import eventlet
+from sanic import Sanic
+from sanic.blueprint_group import BlueprintGroup
+from sanic.blueprints import Blueprint
+from sanic.request import Request
+from sanic.response import HTTPResponse
 
-    eventlet.monkey_patch()
-except ImportError:
-    pass
+UserInfoType = t.Tuple[t.Optional[t.Any], t.Optional[t.Any], t.Optional[t.Any]]
+LabelInfoType = t.Dict[str, t.Union[str, bool, int, float]]
+CustomInfoType = t.Dict[str, t.Any]
 
-try:
-    from psycopg2cffi import compat
+SanicRequestOrResponse = t.Union[Request, HTTPResponse]
 
-    compat.register()
-except ImportError:
-    pass
+ApmHandlerType = t.Optional[t.Callable[[Request, BaseException], t.Coroutine[t.Any, t.Any, None]]]
 
-where_am_i = dirname(abspath(__file__))
+EnvInfoType = t.Iterable[t.Tuple[str, str]]
 
+TransactionNameCallbackType = t.Optional[t.Callable[[Request], str]]
 
-sys.path.insert(0, where_am_i)
+UserInfoCallbackType = t.Optional[t.Callable[[Request], t.Awaitable[UserInfoType]]]
 
-# don't run tests of dependencies that land in "build" and "src"
-collect_ignore = ["build", "src"]
+CustomContextCallbackType = t.Optional[t.Callable[[SanicRequestOrResponse], t.Awaitable[CustomInfoType]]]
 
-pytest_plugins = ["tests.fixtures"]
+LabelInfoCallbackType = t.Optional[t.Callable[[SanicRequestOrResponse], t.Awaitable[LabelInfoType]]]
 
-for module, fixtures in {
-    "django": "tests.contrib.django.fixtures",
-    "flask": "tests.contrib.flask.fixtures",
-    "aiohttp": "aiohttp.pytest_plugin",
-    "sanic": "tests.contrib.sanic.fixtures",
-}.items():
-    try:
-        importlib.import_module(module)
-        pytest_plugins.append(fixtures)
-    except ImportError:
-        pass
+APMConfigType = t.Optional[t.Union[t.Dict[str, t.Any], t.Dict[bytes, t.Any]]]
 
+ExtendableMiddlewareGroup = t.Union[Blueprint, BlueprintGroup]
 
-def pytest_report_header(config):
-    if "PYTHON_VERSION" in os.environ:
-        return "matrix: {}/{}".format(os.environ.get("PYTHON_VERSION"), os.environ.get("WEBFRAMEWORK"))
+AllMiddlewareGroup = t.Union[Sanic, Blueprint, BlueprintGroup]
