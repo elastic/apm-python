@@ -29,6 +29,8 @@ exclude:
     FRAMEWORK: cassandra-3.4
   - PYTHON_VERSION: python-3.10-rc
     FRAMEWORK: pymongo-3.5
+  - PYTHON_VERSION: python-3.10-rc
+    FRAMEWORK: grpcio-newest
   # requests
   - PYTHON_VERSION: python-3.6
     FRAMEWORK: requests-1.2

@@ -48,3 +48,4 @@ FRAMEWORK:
   - httplib2-newest
   - prometheus_client-newest
   - aiomysql-newest
+  - grpcio-newest
